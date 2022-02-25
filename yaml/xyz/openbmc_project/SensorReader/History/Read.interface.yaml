@@ -1,0 +1,28 @@
+description: >
+methods:
+    - name: Read
+      description: >
+          Reads the Sensor History readings.
+      parameters:
+        - name: Name
+          type: string
+          description: >
+              Sensor Name.
+      returns:
+        - name: History
+          type: dict[uint64,double]
+          description: >
+            The history for the sensor reading.
+      errors:
+        - xyz.openbmc_project.Common.Error.InvalidArgument
+
+properties:
+    - name: Interval
+      type: uint64
+      description: >
+          The value of this property used by sensor history reader.
+    - name: TimeFrame
+      type: uint64
+      description: >
+          The value of this property used by sensor history reader.
+

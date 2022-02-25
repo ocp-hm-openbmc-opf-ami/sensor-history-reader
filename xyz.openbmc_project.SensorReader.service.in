@@ -1,0 +1,11 @@
+[Unit]
+Description=Sensor History Reader 
+After=xyz.openbmc_project.ObjectMapper.service
+
+[Service]
+ExecStart=/usr/bin/env sensor-reader
+SyslogIdentifier=sensor-reader
+
+[Install]
+WantedBy=multi-user.target
+
