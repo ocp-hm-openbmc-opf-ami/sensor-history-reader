@@ -257,13 +257,17 @@ void History::readHistory()
             std::size_t pos = (it->first).rfind('/');
             auto sensorName = (it->first).substr(pos + 1);
 
-            if (this->sensorHistory[sensorName].size() ==
+            if (this->sensorHistory[sensorName].size() >=
                 ((HistoryIntf::timeFrame() * seconds_minute) /
                  HistoryIntf::interval()))
             {
+                for(int i = this->sensorHistory[sensorName].size() -
+                ((HistoryIntf::timeFrame() * seconds_minute) /
+                 HistoryIntf::interval()); i >= 0; i-- )
                 this->sensorHistory[sensorName].pop_front();
             }
-            auto sensorValue = std::make_pair(timeStamp, value);
+            
+	    auto sensorValue = std::make_pair(timeStamp, value);
             this->sensorHistory[sensorName].push_back(sensorValue);
         }
 
