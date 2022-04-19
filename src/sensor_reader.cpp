@@ -235,6 +235,7 @@ Value History::getSensorValue(sdbusplus::bus::bus& bus,
 
 void History::readHistory()
 {
+    int temp = 60;
     while (threadStart)
     {
         boost::asio::io_context io;
@@ -257,26 +258,37 @@ void History::readHistory()
             std::size_t pos = (it->first).rfind('/');
             auto sensorName = (it->first).substr(pos + 1);
 
-            if (this->sensorHistory[sensorName].size() >=
-                ((HistoryIntf::timeFrame() * seconds_minute) /
-                 HistoryIntf::interval()))
+            if (temp == HistoryIntf::interval())
             {
-                for(int i = this->sensorHistory[sensorName].size() -
-                ((HistoryIntf::timeFrame() * seconds_minute) /
-                 HistoryIntf::interval()); i >= 0; i-- )
-                this->sensorHistory[sensorName].pop_front();
+                if (this->sensorHistory[sensorName].size() >=
+                    ((HistoryIntf::timeFrame() * seconds_minute) /
+                     HistoryIntf::interval()))
+
+                    this->sensorHistory[sensorName].pop_front();
             }
-            
+            else
+            {
+                for(int i = this->sensorHistory[sensorName].size(); i > 0; i-- )
+                this->sensorHistory[sensorName].pop_front();   
+            }
+
 	    auto sensorValue = std::make_pair(timeStamp, value);
             this->sensorHistory[sensorName].push_back(sensorValue);
         }
 
+	temp = HistoryIntf::interval();
         if (!threadStart)
             break;
-        std::this_thread::sleep_for(
-            std::chrono::seconds(HistoryIntf::interval()));
+	for (int i = 0; i < HistoryIntf::interval(); i++ )
+	{
+            if (temp == HistoryIntf::interval() )
+	        std::this_thread::sleep_for( std::chrono::seconds(1) );
+	    else
+		break;
+	}
     }
 }
 
 } // namespace SensorReader
 } // namespace phosphor
+
