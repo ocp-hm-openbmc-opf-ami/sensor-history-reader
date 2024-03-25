@@ -114,8 +114,10 @@ class History : public Ifaces
 
     /** @brief read sensor history. */
     void readHistory();
+	std::vector<std::string> readconfiguredsensorsfile();
 
     bool threadStart;
+	std::vector<std::string> sensors;
 
     std::thread historyReader;
 
