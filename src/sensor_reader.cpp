@@ -11,6 +11,7 @@ namespace phosphor
 namespace SensorReader
 {
 static constexpr auto READER_FILE = "sensorreader.json";
+static constexpr auto CONF_SENSOR_FILE = "configuredsensors";
 static constexpr auto PROP_INTF = "org.freedesktop.DBus.Properties";
 static constexpr auto METHOD_GET = "Get";
 static constexpr auto MAPPER_BUSNAME = "xyz.openbmc_project.ObjectMapper";
@@ -31,6 +32,7 @@ History::History(sdbusplus::bus::bus& bus, const char* objPath,
     std::pair<uint64_t, uint64_t> value = readSensorReaderfile();
     HistoryIntf::interval(value.first);
     HistoryIntf::timeFrame(value.second);
+	sensors = readconfiguredsensorsfile();
     threadStart = true;
     historyReader = std::thread(&History::readHistory, this);
     emit_object_added();
@@ -117,6 +119,36 @@ std::pair<uint64_t, uint64_t> History::readSensorReaderfile()
     auto value = std::make_pair(interval, timeFrame);
 
     return value;
+}
+std::vector<std::string> History::readconfiguredsensorsfile()
+{
+    std::vector<std::string> configuredsensors;
+    fs::path filePath = readerConfDir;
+    filePath /= CONF_SENSOR_FILE;
+	std::string line;
+
+    std::ifstream sensorfile(filePath.string());
+    if (!sensorfile.good())
+    {
+        log<level::ERR>("Sensor Reader file not found");
+    }
+
+    try
+    {
+       while (std::getline(sensorfile, line))
+		{
+			std::istringstream iss(line);
+			configuredsensors.push_back(line.c_str());			
+		}
+    }
+    catch (Json::exception& e)
+    {
+        log<level::ERR>("Parse/Data type error", entry("MSG: %s", e.what()));
+    }
+
+    sensorfile.close();
+
+    return configuredsensors;
 }
 
 std::map<uint64_t, double> History::read(std::string name)
@@ -236,6 +268,7 @@ Value History::getSensorValue(sdbusplus::bus::bus& bus,
 void History::readHistory()
 {
     int temp = 60;
+	int found=0;
     while (threadStart)
     {
         boost::asio::io_context io;
@@ -257,7 +290,27 @@ void History::readHistory()
 
             std::size_t pos = (it->first).rfind('/');
             auto sensorName = (it->first).substr(pos + 1);
+			//std::cout<<"the sensor name "<<sensorName<<std::endl;
+			
+			if(!sensors.empty())
+			{
+				for (auto &s: sensors) {
+					if (sensorName.compare(s.c_str()) == 0)
+					{
+						found=1;
+						//std::cout << s << std::endl;
+					}
+				}
 
+				if (found)
+				{
+					std::cout<<"found the sensor name "<<sensorName<<std::endl;
+					found=0;
+				}
+				else
+					continue;
+			}
+			
             if (temp == HistoryIntf::interval())
             {
                 if (this->sensorHistory[sensorName].size() >=
