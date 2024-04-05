@@ -295,7 +295,7 @@ void History::readHistory()
 			if(!sensors.empty())
 			{
 				for (auto &s: sensors) {
-					if (sensorName.compare(s.c_str()) == 0)
+					if (s.find(sensorName) != std::string::npos)
 					{
 						found=1;
 						//std::cout << s << std::endl;
