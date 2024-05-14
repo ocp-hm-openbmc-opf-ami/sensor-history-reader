@@ -53,7 +53,7 @@ executable(
         boost_dep,
         dependency(
             'boost',
-            modules: ['coroutine', 'context'],
+            modules: ['coroutine', 'context', 'serialization', 'filesystem'],
             disabler: true,
             required: false,
         ),

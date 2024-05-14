@@ -2,6 +2,10 @@
 
 #include <boost/asio/io_service.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 #include <iostream>
 #include <sdbusplus/asio/connection.hpp>
 #include <sdbusplus/bus.hpp>
@@ -12,6 +16,7 @@ namespace SensorReader
 {
 static constexpr auto READER_FILE = "sensorreader.json";
 static constexpr auto CONF_SENSOR_FILE = "configuredsensors";
+static constexpr auto SENSOR_HISTORY_FILE = "sensorHistoryData.bin";
 static constexpr auto PROP_INTF = "org.freedesktop.DBus.Properties";
 static constexpr auto METHOD_GET = "Get";
 static constexpr auto MAPPER_BUSNAME = "xyz.openbmc_project.ObjectMapper";
@@ -269,6 +274,7 @@ void History::readHistory()
 {
     int temp = 60;
 	int found=0;
+	this->sensorHistory = readHistoryDataToFile();
     while (threadStart)
     {
         boost::asio::io_context io;
@@ -339,7 +345,41 @@ void History::readHistory()
 	    else
 		break;
 	}
+		wrtieHistoryDataToFile(this->sensorHistory);
+		
     }
+}
+
+int History::wrtieHistoryDataToFile(MapSensorValues historyData)
+{
+	fs::path filePath = readerConfDir;
+    filePath /= SENSOR_HISTORY_FILE;
+	std::ofstream historyDataFile(filePath.c_str());
+	if(historyDataFile.is_open())
+	{
+		boost::archive::text_oarchive oa(historyDataFile);
+		oa << historyData;
+		historyDataFile.close();
+	}
+	else
+		return -1;
+	return 0;
+	
+}
+MapSensorValues History::readHistoryDataToFile()
+{
+	MapSensorValues sensorHistory;
+	fs::path filePath = readerConfDir;
+    filePath /= SENSOR_HISTORY_FILE;
+	std::ifstream historyDataFile(filePath.c_str());
+	if(historyDataFile.is_open())
+	{
+		boost::archive::text_iarchive ia(historyDataFile);
+		ia >> sensorHistory;
+		historyDataFile.close();
+	}
+		
+	return sensorHistory;
 }
 
 } // namespace SensorReader
