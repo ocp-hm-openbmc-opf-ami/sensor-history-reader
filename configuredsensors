@@ -1,5 +1,14 @@
 Cpu_Power_Average_CPU1
+Cpu_Power_Average_CPU2
 PSU2_Temperature
+PSU1_Input_Power
+PSU1_Output_Power
+PSU2_Input_Power
+PSU2_Output_Power
+Platform_Power_Average_CPU1
+Platform_Power_Average_CPU2
+Dimm_Power_Average_CPU1
+Dimm_Power_Average_CPU2
 Right_DIMM_Bank_Temp
 Right_Mid_Board_Temp
 System_Airflow
