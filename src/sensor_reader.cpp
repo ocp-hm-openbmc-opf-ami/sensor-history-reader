@@ -366,20 +366,32 @@ int History::wrtieHistoryDataToFile(MapSensorValues historyData)
 	return 0;
 	
 }
+
 MapSensorValues History::readHistoryDataToFile()
 {
-	MapSensorValues sensorHistory;
-	fs::path filePath = readerConfDir;
+    MapSensorValues sensorHistory;
+    fs::path filePath = readerConfDir;
     filePath /= SENSOR_HISTORY_FILE;
-	std::ifstream historyDataFile(filePath.c_str());
-	if(historyDataFile.is_open())
-	{
-		boost::archive::text_iarchive ia(historyDataFile);
-		ia >> sensorHistory;
-		historyDataFile.close();
-	}
-		
-	return sensorHistory;
+
+    try {
+        std::ifstream historyDataFile(filePath.c_str(), std::ios::binary);
+        if(historyDataFile.is_open())
+        {
+            try {
+                boost::archive::text_iarchive ia(historyDataFile);
+                ia >> sensorHistory;
+            }
+            catch(const boost::archive::archive_exception& e) {
+                std::cerr << "Archive exception: " << e.what() << std::endl;
+            }
+            historyDataFile.close();
+        }
+    }
+    catch(const std::exception& e) {
+        std::cerr << "Exception reading history file: " << e.what() << std::endl;
+    }
+
+    return sensorHistory;
 }
 
 } // namespace SensorReader
