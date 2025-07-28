@@ -15,7 +15,7 @@ namespace phosphor
 namespace SensorReader
 {
 static constexpr auto READER_FILE = "sensorreader.json";
-static constexpr auto CONF_SENSOR_FILE = "configuredsensors";
+static constexpr auto CONF_SENSOR_FILE = "/etc/sensor-reader-conf/configuredsensors";
 static constexpr auto SENSOR_HISTORY_FILE = "sensorHistoryData.bin";
 static constexpr auto PROP_INTF = "org.freedesktop.DBus.Properties";
 static constexpr auto METHOD_GET = "Get";
@@ -128,9 +128,8 @@ std::pair<uint64_t, uint64_t> History::readSensorReaderfile()
 std::vector<std::string> History::readconfiguredsensorsfile()
 {
     std::vector<std::string> configuredsensors;
-    fs::path filePath = readerConfDir;
-    filePath /= CONF_SENSOR_FILE;
-	std::string line;
+    fs::path filePath = CONF_SENSOR_FILE;
+    std::string line;
 
     std::ifstream sensorfile(filePath.string());
     if (!sensorfile.good())
