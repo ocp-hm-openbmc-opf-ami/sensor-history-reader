@@ -309,7 +309,7 @@ void History::readHistory()
 
 				if (found)
 				{
-					std::cout<<"found the sensor name "<<sensorName<<std::endl;
+					//std::cout<<"found the sensor name "<<sensorName<<std::endl;
 					found=0;
 				}
 				else
