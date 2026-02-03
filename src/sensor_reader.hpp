@@ -2,6 +2,13 @@
 
 #include "xyz/openbmc_project/SensorReader/History/Read/server.hpp"
 
+#include <nlohmann/json.hpp>
+#include <phosphor-logging/elog-errors.hpp>
+#include <phosphor-logging/log.hpp>
+#include <sdbusplus/bus.hpp>
+#include <sdbusplus/server/object.hpp>
+#include <xyz/openbmc_project/Common/error.hpp>
+
 #include <chrono>
 #include <condition_variable>
 #include <filesystem>
@@ -9,16 +16,10 @@
 #include <list>
 #include <map>
 #include <mutex>
-#include <nlohmann/json.hpp>
-#include <phosphor-logging/elog-errors.hpp>
-#include <phosphor-logging/log.hpp>
-#include <sdbusplus/bus.hpp>
-#include <sdbusplus/server/object.hpp>
 #include <string>
 #include <thread>
 #include <variant>
 #include <vector>
-#include <xyz/openbmc_project/Common/error.hpp>
 
 using phosphor::logging::elog;
 using phosphor::logging::entry;
@@ -114,11 +115,11 @@ class History : public Ifaces
 
     /** @brief read sensor history. */
     void readHistory();
-	std::vector<std::string> readconfiguredsensorsfile();
-	int wrtieHistoryDataToFile(MapSensorValues historyData);
-	MapSensorValues readHistoryDataToFile();
+    std::vector<std::string> readconfiguredsensorsfile();
+    int wrtieHistoryDataToFile(MapSensorValues historyData);
+    MapSensorValues readHistoryDataToFile();
     bool threadStart;
-	std::vector<std::string> sensors;
+    std::vector<std::string> sensors;
 
     std::thread historyReader;
 

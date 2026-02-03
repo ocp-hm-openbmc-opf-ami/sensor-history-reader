@@ -1,21 +1,23 @@
 #include "sensor_reader.hpp"
 
-#include <boost/asio/io_service.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/list.hpp>
-#include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
-#include <iostream>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/shared_ptr.hpp>
 #include <sdbusplus/asio/connection.hpp>
 #include <sdbusplus/bus.hpp>
+
+#include <iostream>
 
 namespace phosphor
 {
 namespace SensorReader
 {
 static constexpr auto READER_FILE = "sensorreader.json";
-static constexpr auto CONF_SENSOR_FILE = "/etc/sensor-reader-conf/configuredsensors";
+static constexpr auto CONF_SENSOR_FILE =
+    "/etc/sensor-reader-conf/configuredsensors";
 static constexpr auto SENSOR_HISTORY_FILE = "sensorHistoryData.bin";
 static constexpr auto PROP_INTF = "org.freedesktop.DBus.Properties";
 static constexpr auto METHOD_GET = "Get";
@@ -28,8 +30,7 @@ static const std::string property = "Value";
 static const auto seconds_minute = 60; // seconds for a minute
 
 History::History(sdbusplus::bus::bus& bus, const char* objPath,
-                 const char* readerPath) :
-    Ifaces(bus, objPath)
+                 const char* readerPath) : Ifaces(bus, objPath)
 {
     fs::path confDir(readerPath);
     readerConfDir = confDir;
@@ -37,7 +38,7 @@ History::History(sdbusplus::bus::bus& bus, const char* objPath,
     std::pair<uint64_t, uint64_t> value = readSensorReaderfile();
     HistoryIntf::interval(value.first);
     HistoryIntf::timeFrame(value.second);
-	sensors = readconfiguredsensorsfile();
+    sensors = readconfiguredsensorsfile();
     threadStart = true;
     historyReader = std::thread(&History::readHistory, this);
     emit_object_added();
@@ -55,8 +56,8 @@ History::~History()
 
 void History::writeSensorReaderfile(bool force)
 {
-    uint64_t interval = 60;// Default interval
-    uint64_t timeFrame = 10;//Default Time Frame
+    uint64_t interval = 60;  // Default interval
+    uint64_t timeFrame = 10; // Default Time Frame
     fs::path filePath = readerConfDir;
     filePath /= READER_FILE;
 
@@ -97,8 +98,8 @@ void History::writeSensorReaderfile(bool force)
 
 std::pair<uint64_t, uint64_t> History::readSensorReaderfile()
 {
-    uint64_t interval = 60;// Default interval
-    uint64_t timeFrame = 10;//Default Time Frame
+    uint64_t interval = 60;  // Default interval
+    uint64_t timeFrame = 10; // Default Time Frame
     Json jsonData = nullptr;
     fs::path filePath = readerConfDir;
     filePath /= READER_FILE;
@@ -139,11 +140,11 @@ std::vector<std::string> History::readconfiguredsensorsfile()
 
     try
     {
-       while (std::getline(sensorfile, line))
-		{
-			std::istringstream iss(line);
-			configuredsensors.push_back(line.c_str());			
-		}
+        while (std::getline(sensorfile, line))
+        {
+            std::istringstream iss(line);
+            configuredsensors.push_back(line.c_str());
+        }
     }
     catch (Json::exception& e)
     {
@@ -162,7 +163,7 @@ std::map<uint64_t, double> History::read(std::string name)
     auto it = this->sensorHistory.find(name);
     if (it != this->sensorHistory.end())
     {
-        for (SensorValue const& data : it->second)
+        for (const SensorValue& data : it->second)
         {
             auto value = std::make_pair(data.first, data.second);
             historyValue.insert(value);
@@ -232,12 +233,10 @@ MapperResponseType History::getSensorObject(sdbusplus::bus::bus& bus)
     return mapperResponse;
 }
 
-Value History::getSensorValue(sdbusplus::bus::bus& bus,
-                              const std::string& service,
-                              const std::string& objPath,
-                              const std::string& interface,
-                              const std::string& property,
-                              std::chrono::microseconds timeout)
+Value History::getSensorValue(
+    sdbusplus::bus::bus& bus, const std::string& service,
+    const std::string& objPath, const std::string& interface,
+    const std::string& property, std::chrono::microseconds timeout)
 {
     Value value = {0.0};
 
@@ -272,8 +271,8 @@ Value History::getSensorValue(sdbusplus::bus::bus& bus,
 void History::readHistory()
 {
     int temp = 60;
-	int found=0;
-	this->sensorHistory = readHistoryDataToFile();
+    int found = 0;
+    this->sensorHistory = readHistoryDataToFile();
     while (threadStart)
     {
         boost::asio::io_context io;
@@ -295,27 +294,29 @@ void History::readHistory()
 
             std::size_t pos = (it->first).rfind('/');
             auto sensorName = (it->first).substr(pos + 1);
-			//std::cout<<"the sensor name "<<sensorName<<std::endl;
-			
-			if(!sensors.empty())
-			{
-				for (auto &s: sensors) {
-					if (s.find(sensorName) != std::string::npos)
-					{
-						found=1;
-						//std::cout << s << std::endl;
-					}
-				}
+            // std::cout<<"the sensor name "<<sensorName<<std::endl;
 
-				if (found)
-				{
-					//std::cout<<"found the sensor name "<<sensorName<<std::endl;
-					found=0;
-				}
-				else
-					continue;
-			}
-			
+            if (!sensors.empty())
+            {
+                for (auto& s : sensors)
+                {
+                    if (s.find(sensorName) != std::string::npos)
+                    {
+                        found = 1;
+                        // std::cout << s << std::endl;
+                    }
+                }
+
+                if (found)
+                {
+                    // std::cout<<"found the sensor name
+                    // "<<sensorName<<std::endl;
+                    found = 0;
+                }
+                else
+                    continue;
+            }
+
             if (temp == HistoryIntf::interval())
             {
                 if (this->sensorHistory[sensorName].size() >=
@@ -326,44 +327,42 @@ void History::readHistory()
             }
             else
             {
-                for(int i = this->sensorHistory[sensorName].size(); i > 0; i-- )
-                this->sensorHistory[sensorName].pop_front();   
+                for (int i = this->sensorHistory[sensorName].size(); i > 0; i--)
+                    this->sensorHistory[sensorName].pop_front();
             }
 
-	    auto sensorValue = std::make_pair(timeStamp, value);
+            auto sensorValue = std::make_pair(timeStamp, value);
             this->sensorHistory[sensorName].push_back(sensorValue);
         }
 
-	temp = HistoryIntf::interval();
+        temp = HistoryIntf::interval();
         if (!threadStart)
             break;
-	for (int i = 0; i < HistoryIntf::interval(); i++ )
-	{
-            if (temp == HistoryIntf::interval() )
-	        std::this_thread::sleep_for( std::chrono::seconds(1) );
-	    else
-		break;
-	}
-		wrtieHistoryDataToFile(this->sensorHistory);
-		
+        for (int i = 0; i < HistoryIntf::interval(); i++)
+        {
+            if (temp == HistoryIntf::interval())
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            else
+                break;
+        }
+        wrtieHistoryDataToFile(this->sensorHistory);
     }
 }
 
 int History::wrtieHistoryDataToFile(MapSensorValues historyData)
 {
-	fs::path filePath = readerConfDir;
+    fs::path filePath = readerConfDir;
     filePath /= SENSOR_HISTORY_FILE;
-	std::ofstream historyDataFile(filePath.c_str());
-	if(historyDataFile.is_open())
-	{
-		boost::archive::text_oarchive oa(historyDataFile);
-		oa << historyData;
-		historyDataFile.close();
-	}
-	else
-		return -1;
-	return 0;
-	
+    std::ofstream historyDataFile(filePath.c_str());
+    if (historyDataFile.is_open())
+    {
+        boost::archive::text_oarchive oa(historyDataFile);
+        oa << historyData;
+        historyDataFile.close();
+    }
+    else
+        return -1;
+    return 0;
 }
 
 MapSensorValues History::readHistoryDataToFile()
@@ -372,22 +371,27 @@ MapSensorValues History::readHistoryDataToFile()
     fs::path filePath = readerConfDir;
     filePath /= SENSOR_HISTORY_FILE;
 
-    try {
+    try
+    {
         std::ifstream historyDataFile(filePath.c_str(), std::ios::binary);
-        if(historyDataFile.is_open())
+        if (historyDataFile.is_open())
         {
-            try {
+            try
+            {
                 boost::archive::text_iarchive ia(historyDataFile);
                 ia >> sensorHistory;
             }
-            catch(const boost::archive::archive_exception& e) {
+            catch (const boost::archive::archive_exception& e)
+            {
                 std::cerr << "Archive exception: " << e.what() << std::endl;
             }
             historyDataFile.close();
         }
     }
-    catch(const std::exception& e) {
-        std::cerr << "Exception reading history file: " << e.what() << std::endl;
+    catch (const std::exception& e)
+    {
+        std::cerr << "Exception reading history file: " << e.what()
+                  << std::endl;
     }
 
     return sensorHistory;
@@ -395,4 +399,3 @@ MapSensorValues History::readHistoryDataToFile()
 
 } // namespace SensorReader
 } // namespace phosphor
-
