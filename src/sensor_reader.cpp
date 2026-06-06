@@ -210,7 +210,7 @@ MapperResponseType History::getSensorObject(sdbusplus::bus::bus& bus)
         mapperCall.append(depth);
         mapperCall.append(std::vector<Interface>({SensorInterface}));
 
-        auto mapperResponseMsg = bus.call(mapperCall);
+        auto mapperResponseMsg = bus.call(mapperCall, DBUS_TIMEOUT.count());
         if (mapperResponseMsg.is_method_error())
         {
             log<level::ERR>("Mapper GetSubTree failed",
@@ -273,11 +273,10 @@ void History::readHistory()
     int temp = 60;
     int found = 0;
     this->sensorHistory = readHistoryDataToFile();
+    auto bus = sdbusplus::bus::new_default();
     while (threadStart)
     {
-        boost::asio::io_context io;
-        auto conn = std::make_shared<sdbusplus::asio::connection>(io);
-        auto sensorObjects = getSensorObject(*conn);
+        auto sensorObjects = getSensorObject(bus);
         auto now = std::chrono::system_clock::now();
         auto timeStamp = std::chrono::duration_cast<std::chrono::seconds>(
                              now.time_since_epoch())
@@ -285,7 +284,7 @@ void History::readHistory()
 
         for (auto it = sensorObjects.begin(); it != sensorObjects.end(); it++)
         {
-            auto data = getSensorValue(*conn, it->second.begin()->first,
+            auto data = getSensorValue(bus, it->second.begin()->first,
                                        it->first, SensorInterface, property);
             double value = std::get<double>(data);
 
