@@ -60,6 +60,11 @@ sreader_dbus_dep = declare_dependency(
 
 subdir('src')
 
+build_tests = get_option('tests')
+if build_tests.allowed()
+  subdir('tests')
+endif
+
 configure_file(
   input: 'xyz.openbmc_project.SensorReader.service.in',
   output: 'xyz.openbmc_project.SensorReader.service',

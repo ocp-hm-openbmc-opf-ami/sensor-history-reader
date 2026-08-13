@@ -285,81 +285,96 @@ void History::readHistory()
         }
     }
 
-    auto bus = sdbusplus::bus::new_default();
-
-    while (threadStart)
+    try
     {
-        auto sensorObjects = getSensorObject(bus);
-        auto now = std::chrono::system_clock::now();
-        auto timeStamp = std::chrono::duration_cast<std::chrono::seconds>(
-                             now.time_since_epoch())
-                             .count();
 
-        for (auto it = sensorObjects.begin(); it != sensorObjects.end(); it++)
+        auto bus = sdbusplus::bus::new_default();
+
+        while (threadStart)
         {
-            auto data = getSensorValue(bus, it->second.begin()->first,
-                                       it->first, SensorInterface, property);
-            double value = std::get<double>(data);
+            auto sensorObjects = getSensorObject(bus);
+            auto now = std::chrono::system_clock::now();
+            auto timeStamp = std::chrono::duration_cast<std::chrono::seconds>(
+                                now.time_since_epoch())
+                                .count();
 
-            if (std::isnan(value))
-                value = 0.0;
-
-            std::size_t pos = (it->first).rfind('/');
-            auto sensorName = (it->first).substr(pos + 1);
-            // std::cout<<"the sensor name "<<sensorName<<std::endl;
-
-            if (!sensors.empty())
+            for (auto it = sensorObjects.begin(); it != sensorObjects.end(); it++)
             {
-                for (auto& s : sensors)
+                auto data = getSensorValue(bus, it->second.begin()->first,
+                                        it->first, SensorInterface, property);
+                double value = std::get<double>(data);
+
+                if (std::isnan(value))
+                    value = 0.0;
+
+                std::size_t pos = (it->first).rfind('/');
+                auto sensorName = (it->first).substr(pos + 1);
+                // std::cout<<"the sensor name "<<sensorName<<std::endl;
+
+                if (!sensors.empty())
                 {
-                    if (s.find(sensorName) != std::string::npos)
+                    for (auto& s : sensors)
                     {
-                        found = true;
-                        // std::cout << s << std::endl;
+                        if (s.find(sensorName) != std::string::npos)
+                        {
+                            found = true;
+                            // std::cout << s << std::endl;
+                        }
                     }
+
+                    if (found)
+                    {
+                        // std::cout<<"found the sensor name
+                        // "<<sensorName<<std::endl;
+                        found = false;
+                    }
+                    else
+                        continue;
                 }
 
-                if (found)
+                auto sensorValue = std::make_pair(timeStamp, value);
+                std::lock_guard<std::mutex> lock(historyMutex);
+
+                if (temp == HistoryIntf::interval())
                 {
-                    // std::cout<<"found the sensor name
-                    // "<<sensorName<<std::endl;
-                    found = false;
+                    if (this->sensorHistory[sensorName].size() >=
+                        ((HistoryIntf::timeFrame() * seconds_minute) /
+                        HistoryIntf::interval()))
+
+                        this->sensorHistory[sensorName].pop_front();
                 }
                 else
-                    continue;
+                {
+                    for (size_t i = this->sensorHistory[sensorName].size(); i > 0;
+                        i--)
+                        this->sensorHistory[sensorName].pop_front();
+                }
+
+                this->sensorHistory[sensorName].push_back(sensorValue);
             }
 
-            auto sensorValue = std::make_pair(timeStamp, value);
-            std::lock_guard<std::mutex> lock(historyMutex);
-
-            if (temp == HistoryIntf::interval())
-            {
-                if (this->sensorHistory[sensorName].size() >=
-                    ((HistoryIntf::timeFrame() * seconds_minute) /
-                     HistoryIntf::interval()))
-
-                    this->sensorHistory[sensorName].pop_front();
-            }
-            else
-            {
-                for (size_t i = this->sensorHistory[sensorName].size(); i > 0;
-                     i--)
-                    this->sensorHistory[sensorName].pop_front();
-            }
-
-            this->sensorHistory[sensorName].push_back(sensorValue);
-        }
-
-        temp = HistoryIntf::interval();
-        if (!threadStart)
-            break;
-        for (uint64_t i = 0; i < HistoryIntf::interval(); i++)
-        {
-            if (temp == HistoryIntf::interval())
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-            else
+            temp = HistoryIntf::interval();
+            if (!threadStart)
                 break;
+            for (uint64_t i = 0; i < HistoryIntf::interval(); i++)
+            {
+                if (temp == HistoryIntf::interval())
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                else
+                    break;
+            }
         }
+
+    }
+    catch (const std::exception& e)
+    {
+        log<level::ERR>("readHistory: thread terminated due to exception",
+                        entry("WHAT=%s", e.what()));
+    }
+    catch (...)
+    {
+        log<level::ERR>(
+            "readHistory: thread terminated with unknown exception");
     }
 }
 
