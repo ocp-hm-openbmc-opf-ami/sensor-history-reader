@@ -10,6 +10,7 @@
 #include <sdbusplus/bus.hpp>
 
 #include <iostream>
+#include <utility>
 
 namespace phosphor
 {
@@ -24,8 +25,7 @@ static constexpr auto METHOD_GET = "Get";
 static constexpr auto MAPPER_BUSNAME = "xyz.openbmc_project.ObjectMapper";
 static constexpr auto MAPPER_PATH = "/xyz/openbmc_project/object_mapper";
 static constexpr auto MAPPER_INTERFACE = "xyz.openbmc_project.ObjectMapper";
-static constexpr const char* SensorInterface =
-    "xyz.openbmc_project.Sensor.Value";
+static const std::string SensorInterface = "xyz.openbmc_project.Sensor.Value";
 static const std::string property = "Value";
 static const auto seconds_minute = 60; // seconds for a minute
 
@@ -33,7 +33,7 @@ History::History(sdbusplus::bus::bus& bus, const char* objPath,
                  const char* readerPath) : Ifaces(bus, objPath)
 {
     fs::path confDir(readerPath);
-    readerConfDir = confDir;
+    readerConfDir = std::move(confDir);
     writeSensorReaderfile(false);
     std::pair<uint64_t, uint64_t> value = readSensorReaderfile();
     HistoryIntf::interval(value.first);
@@ -159,6 +159,7 @@ std::vector<std::string> History::readconfiguredsensorsfile()
 std::map<uint64_t, double> History::read(std::string name)
 {
     std::map<uint64_t, double> historyValue;
+    std::lock_guard<std::mutex> lock(historyMutex);
 
     auto it = this->sensorHistory.find(name);
     if (it != this->sensorHistory.end())
@@ -214,14 +215,14 @@ MapperResponseType History::getSensorObject(sdbusplus::bus::bus& bus)
         if (mapperResponseMsg.is_method_error())
         {
             log<level::ERR>("Mapper GetSubTree failed",
-                            entry("INTERFACE=%s", SensorInterface));
+                            entry("INTERFACE=%s", SensorInterface.c_str()));
         }
 
         mapperResponseMsg.read(mapperResponse);
         if (mapperResponse.empty())
         {
             log<level::ERR>("Invalid mapper response",
-                            entry("INTERFACE=%s", SensorInterface));
+                            entry("INTERFACE=%s", SensorInterface.c_str()));
         }
     }
     catch (const sdbusplus::exception::SdBusError& e)
@@ -270,81 +271,110 @@ Value History::getSensorValue(
 
 void History::readHistory()
 {
-    int temp = 60;
-    int found = 0;
-    this->sensorHistory = readHistoryDataToFile();
-    auto bus = sdbusplus::bus::new_default();
-    while (threadStart)
+    uint64_t temp = 60;
+    bool found = false;
+
+    // Load history from file if it exists (for persistence across reboots)
     {
-        auto sensorObjects = getSensorObject(bus);
-        auto now = std::chrono::system_clock::now();
-        auto timeStamp = std::chrono::duration_cast<std::chrono::seconds>(
-                             now.time_since_epoch())
-                             .count();
-
-        for (auto it = sensorObjects.begin(); it != sensorObjects.end(); it++)
+        std::lock_guard<std::mutex> lock(historyMutex);
+        this->sensorHistory = readHistoryDataFromFile();
+        if (!this->sensorHistory.empty())
         {
-            auto data = getSensorValue(bus, it->second.begin()->first,
-                                       it->first, SensorInterface, property);
-            double value = std::get<double>(data);
+            log<level::INFO>("Loaded sensor history from file",
+                             entry("ENTRIES=%zu", this->sensorHistory.size()));
+        }
+    }
 
-            if (std::isnan(value))
-                value = 0.0;
+    try
+    {
 
-            std::size_t pos = (it->first).rfind('/');
-            auto sensorName = (it->first).substr(pos + 1);
-            // std::cout<<"the sensor name "<<sensorName<<std::endl;
+        auto bus = sdbusplus::bus::new_default();
 
-            if (!sensors.empty())
+        while (threadStart)
+        {
+            auto sensorObjects = getSensorObject(bus);
+            auto now = std::chrono::system_clock::now();
+            auto timeStamp = std::chrono::duration_cast<std::chrono::seconds>(
+                                now.time_since_epoch())
+                                .count();
+
+            for (auto it = sensorObjects.begin(); it != sensorObjects.end(); it++)
             {
-                for (auto& s : sensors)
+                auto data = getSensorValue(bus, it->second.begin()->first,
+                                        it->first, SensorInterface, property);
+                double value = std::get<double>(data);
+
+                if (std::isnan(value))
+                    value = 0.0;
+
+                std::size_t pos = (it->first).rfind('/');
+                auto sensorName = (it->first).substr(pos + 1);
+                // std::cout<<"the sensor name "<<sensorName<<std::endl;
+
+                if (!sensors.empty())
                 {
-                    if (s.find(sensorName) != std::string::npos)
+                    for (auto& s : sensors)
                     {
-                        found = 1;
-                        // std::cout << s << std::endl;
+                        if (s.find(sensorName) != std::string::npos)
+                        {
+                            found = true;
+                            // std::cout << s << std::endl;
+                        }
                     }
+
+                    if (found)
+                    {
+                        // std::cout<<"found the sensor name
+                        // "<<sensorName<<std::endl;
+                        found = false;
+                    }
+                    else
+                        continue;
                 }
 
-                if (found)
+                auto sensorValue = std::make_pair(timeStamp, value);
+                std::lock_guard<std::mutex> lock(historyMutex);
+
+                if (temp == HistoryIntf::interval())
                 {
-                    // std::cout<<"found the sensor name
-                    // "<<sensorName<<std::endl;
-                    found = 0;
+                    if (this->sensorHistory[sensorName].size() >=
+                        ((HistoryIntf::timeFrame() * seconds_minute) /
+                        HistoryIntf::interval()))
+
+                        this->sensorHistory[sensorName].pop_front();
                 }
                 else
-                    continue;
+                {
+                    for (size_t i = this->sensorHistory[sensorName].size(); i > 0;
+                        i--)
+                        this->sensorHistory[sensorName].pop_front();
+                }
+
+                this->sensorHistory[sensorName].push_back(sensorValue);
             }
 
-            if (temp == HistoryIntf::interval())
-            {
-                if (this->sensorHistory[sensorName].size() >=
-                    ((HistoryIntf::timeFrame() * seconds_minute) /
-                     HistoryIntf::interval()))
-
-                    this->sensorHistory[sensorName].pop_front();
-            }
-            else
-            {
-                for (int i = this->sensorHistory[sensorName].size(); i > 0; i--)
-                    this->sensorHistory[sensorName].pop_front();
-            }
-
-            auto sensorValue = std::make_pair(timeStamp, value);
-            this->sensorHistory[sensorName].push_back(sensorValue);
-        }
-
-        temp = HistoryIntf::interval();
-        if (!threadStart)
-            break;
-        for (int i = 0; i < HistoryIntf::interval(); i++)
-        {
-            if (temp == HistoryIntf::interval())
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-            else
+            temp = HistoryIntf::interval();
+            if (!threadStart)
                 break;
+            for (uint64_t i = 0; i < HistoryIntf::interval(); i++)
+            {
+                if (temp == HistoryIntf::interval())
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                else
+                    break;
+            }
         }
-        wrtieHistoryDataToFile(this->sensorHistory);
+
+    }
+    catch (const std::exception& e)
+    {
+        log<level::ERR>("readHistory: thread terminated due to exception",
+                        entry("WHAT=%s", e.what()));
+    }
+    catch (...)
+    {
+        log<level::ERR>(
+            "readHistory: thread terminated with unknown exception");
     }
 }
 
@@ -353,6 +383,9 @@ int History::wrtieHistoryDataToFile(MapSensorValues historyData)
     fs::path filePath = readerConfDir;
     filePath /= SENSOR_HISTORY_FILE;
     std::ofstream historyDataFile(filePath.c_str());
+
+    log<level::INFO>("Writing sensor history to file",
+                     entry("ENTRIES=%zu", historyData.size()));
     if (historyDataFile.is_open())
     {
         boost::archive::text_oarchive oa(historyDataFile);
@@ -361,10 +394,11 @@ int History::wrtieHistoryDataToFile(MapSensorValues historyData)
     }
     else
         return -1;
+
     return 0;
 }
 
-MapSensorValues History::readHistoryDataToFile()
+MapSensorValues History::readHistoryDataFromFile()
 {
     MapSensorValues sensorHistory;
     fs::path filePath = readerConfDir;
@@ -394,6 +428,17 @@ MapSensorValues History::readHistoryDataToFile()
     }
 
     return sensorHistory;
+}
+
+void History::saveHistoryOnShutdown()
+{
+    std::lock_guard<std::mutex> lock(historyMutex);
+
+    if (!this->sensorHistory.empty())
+    {
+        log<level::INFO>("Saving sensor history to file on shutdown");
+        wrtieHistoryDataToFile(this->sensorHistory);
+    }
 }
 
 } // namespace SensorReader

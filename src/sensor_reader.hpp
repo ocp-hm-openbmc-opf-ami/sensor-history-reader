@@ -3,7 +3,7 @@
 #include "xyz/openbmc_project/SensorReader/History/Read/server.hpp"
 
 #include <nlohmann/json.hpp>
-#include <phosphor-logging/elog-errors.hpp>
+#include <phosphor-logging/elog.hpp>
 #include <phosphor-logging/log.hpp>
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/server/object.hpp>
@@ -95,6 +95,9 @@ class History : public Ifaces
 
     uint64_t timeFrame(uint64_t value) override;
 
+    /** @brief Save history to file on shutdown. */
+    void saveHistoryOnShutdown();
+
     using HistoryIntf::interval;
     using HistoryIntf::timeFrame;
 
@@ -117,7 +120,7 @@ class History : public Ifaces
     void readHistory();
     std::vector<std::string> readconfiguredsensorsfile();
     int wrtieHistoryDataToFile(MapSensorValues historyData);
-    MapSensorValues readHistoryDataToFile();
+    MapSensorValues readHistoryDataFromFile();
     bool threadStart;
     std::vector<std::string> sensors;
 
@@ -126,8 +129,12 @@ class History : public Ifaces
     fs::path readerConfDir;
 
   protected:
-    /** @brief Sensor History Readings. */
+    /** @brief Sensor History Readings (kept in memory only). */
     MapSensorValues sensorHistory;
+
+    /** @brief Guards concurrent access to sensorHistory between the
+     *         collector thread and D-Bus read() callers. */
+    std::mutex historyMutex;
 };
 } // namespace SensorReader
 } // namespace phosphor
