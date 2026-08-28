@@ -41,7 +41,7 @@ class HistoryPersistenceTest : public ::testing::Test
         bus(makeMockBus(sdbusMock)),
         testDir(fs::temp_directory_path() / "sr_persist_test")
     {
-        writeConfigFile(testDir);
+        writeConfigFile(testDir, 1, 10);
     }
 
     void TearDown() override

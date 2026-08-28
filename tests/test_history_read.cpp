@@ -36,7 +36,7 @@ class HistoryReadTest : public ::testing::Test
         bus(makeMockBus(sdbusMock)),
         testDir(fs::temp_directory_path() / "sr_read_test")
     {
-        writeConfigFile(testDir);
+        writeConfigFile(testDir, 1, 10);
         // Seed a marker so we can wait for the History ctor's asynchronous
         // loader to finish before injecting, then start from empty; otherwise
         // the loader can clobber test-injected data.

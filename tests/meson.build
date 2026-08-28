@@ -45,14 +45,8 @@ _boost_compile_args = [
 ]
 
 _boost_dep = declare_dependency(
-    dependencies: dependency('boost', required: false),
+    dependencies: boost_dep,
     compile_args: _boost_compile_args)
-
-_boost_modules_dep = dependency(
-    'boost',
-    modules: ['coroutine', 'context', 'serialization', 'filesystem'],
-    disabler: true,
-    required: false)
 
 _sdeventplus_dep = dependency(
     'sdeventplus', fallback: ['sdeventplus', 'sdeventplus_dep'])
@@ -77,7 +71,6 @@ sensor_reader_ut_lib = static_library(
         _sdeventplus_dep,
         _stdplus_dep,
         _boost_dep,
-        _boost_modules_dep,
         dependency('threads'),
     ],
 )
@@ -96,7 +89,6 @@ _test_link_deps = [
     _sdeventplus_dep,
     _stdplus_dep,
     _boost_dep,
-    _boost_modules_dep,
     dependency('threads'),
     gtest_dep,
     gmock_dep,
