@@ -9,6 +9,7 @@
 #include <sdbusplus/server/object.hpp>
 #include <xyz/openbmc_project/Common/error.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <filesystem>
@@ -121,7 +122,7 @@ class History : public Ifaces
     std::vector<std::string> readconfiguredsensorsfile();
     int wrtieHistoryDataToFile(MapSensorValues historyData);
     MapSensorValues readHistoryDataFromFile();
-    bool threadStart;
+    std::atomic<bool> threadStart;
     std::vector<std::string> sensors;
 
     std::thread historyReader;

@@ -287,7 +287,6 @@ void History::readHistory()
 
     try
     {
-
         auto bus = sdbusplus::bus::new_default();
 
         while (threadStart)
@@ -295,13 +294,15 @@ void History::readHistory()
             auto sensorObjects = getSensorObject(bus);
             auto now = std::chrono::system_clock::now();
             auto timeStamp = std::chrono::duration_cast<std::chrono::seconds>(
-                                now.time_since_epoch())
-                                .count();
+                                 now.time_since_epoch())
+                                 .count();
 
-            for (auto it = sensorObjects.begin(); it != sensorObjects.end(); it++)
+            for (auto it = sensorObjects.begin(); it != sensorObjects.end();
+                 it++)
             {
-                auto data = getSensorValue(bus, it->second.begin()->first,
-                                        it->first, SensorInterface, property);
+                auto data =
+                    getSensorValue(bus, it->second.begin()->first, it->first,
+                                   SensorInterface, property);
                 double value = std::get<double>(data);
 
                 if (std::isnan(value))
@@ -339,14 +340,14 @@ void History::readHistory()
                 {
                     if (this->sensorHistory[sensorName].size() >=
                         ((HistoryIntf::timeFrame() * seconds_minute) /
-                        HistoryIntf::interval()))
+                         HistoryIntf::interval()))
 
                         this->sensorHistory[sensorName].pop_front();
                 }
                 else
                 {
-                    for (size_t i = this->sensorHistory[sensorName].size(); i > 0;
-                        i--)
+                    for (size_t i = this->sensorHistory[sensorName].size();
+                         i > 0; i--)
                         this->sensorHistory[sensorName].pop_front();
                 }
 
@@ -356,7 +357,9 @@ void History::readHistory()
             temp = HistoryIntf::interval();
             if (!threadStart)
                 break;
-            for (uint64_t i = 0; i < HistoryIntf::interval(); i++)
+            // Wake promptly on shutdown instead of sleeping the full interval
+            for (uint64_t i = 0; i < HistoryIntf::interval() && threadStart;
+                 i++)
             {
                 if (temp == HistoryIntf::interval())
                     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -364,7 +367,6 @@ void History::readHistory()
                     break;
             }
         }
-
     }
     catch (const std::exception& e)
     {
