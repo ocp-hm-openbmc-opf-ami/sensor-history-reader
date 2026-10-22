@@ -40,9 +40,16 @@ boost_compile_args = [
     '-DBOOST_COROUTINES_NO_DEPRECATION_WARNING',
 ]
 
+if get_option('tests').enabled()
+  boost_dep = declare_dependency(
+    dependencies: boost_dep,
+    compile_args: boost_compile_args)
+  boost_modules_dep = declare_dependency()
+else
 boost_dep = declare_dependency(
     dependencies: dependency('boost', required: false),
     compile_args: boost_compile_args)
+endif
 
 executable(
   'sensor-reader',
