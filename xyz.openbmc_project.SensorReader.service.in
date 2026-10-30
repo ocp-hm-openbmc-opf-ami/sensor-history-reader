@@ -1,6 +1,9 @@
 [Unit]
 Description=Sensor History Reader 
 After=xyz.openbmc_project.ObjectMapper.service
+# eMMC backs the persistent config/history dir (/etc/sensor-reader); wait for it
+Wants=com.ami.eMMCEnable.service
+After=com.ami.eMMCEnable.service
 
 [Service]
 ExecStart=/usr/bin/env sensor-reader

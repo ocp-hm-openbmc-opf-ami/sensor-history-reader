@@ -1,21 +1,21 @@
 #pragma once
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <sdbusplus/test/sdbus_mock.hpp>
-
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/utility.hpp>
+#include <sdbusplus/test/sdbus_mock.hpp>
+#include <sensor_reader.hpp>
 
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
-#include <sensor_reader.hpp>
 #include <string>
 #include <thread>
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace phosphor::SensorReader::test
 {
@@ -44,7 +44,7 @@ inline sdbusplus::bus::bus makeMockBus(sdbusplus::SdBusMock& mock)
  * the supplied interval (seconds) and timeFrame (minutes).
  */
 inline void writeConfigFile(const fs::path& dir, uint64_t interval = 60,
-                             uint64_t timeFrame = 10)
+                            uint64_t timeFrame = 10)
 {
     fs::create_directories(dir);
     std::ofstream f(dir / "sensorreader.json");
@@ -63,12 +63,12 @@ class HistoryTestable : public phosphor::SensorReader::History
 {
   public:
     HistoryTestable(sdbusplus::bus::bus& bus, const char* objPath,
-                    const char* readerPath)
-        : phosphor::SensorReader::History(bus, objPath, readerPath)
+                    const char* readerPath) :
+        phosphor::SensorReader::History(bus, objPath, readerPath)
     {}
 
-    using phosphor::SensorReader::History::sensorHistory;
     using phosphor::SensorReader::History::historyMutex;
+    using phosphor::SensorReader::History::sensorHistory;
 };
 
 /**
