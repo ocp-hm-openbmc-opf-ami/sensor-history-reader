@@ -13,11 +13,11 @@
 
 #include "mock_sensor_reader.hpp"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <filesystem>
 #include <string>
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace testing;
 using namespace phosphor::SensorReader::test;
@@ -34,7 +34,8 @@ class HistoryPersistenceTest : public ::testing::Test
     sdbusplus::bus::bus bus;
     fs::path testDir;
 
-    static constexpr auto kObjPath = "/xyz/openbmc_project/SensorReader/Persist";
+    static constexpr auto kObjPath =
+        "/xyz/openbmc_project/SensorReader/Persist";
     static constexpr auto kSeedKey = "__seed_marker__";
 
     HistoryPersistenceTest() :
@@ -121,9 +122,9 @@ TEST_F(HistoryPersistenceTest, SaveAndRestoreMultipleSensors)
 {
     {
         auto h = makeEmptyReadyHistory();
-        injectReadings(*h, "cpu_temp",  2000, 45.0, 2);
+        injectReadings(*h, "cpu_temp", 2000, 45.0, 2);
         injectReadings(*h, "inlet_temp", 2000, 25.0, 2);
-        injectReadings(*h, "fan_speed",  2000, 1200.0, 2);
+        injectReadings(*h, "fan_speed", 2000, 1200.0, 2);
         h->saveHistoryOnShutdown();
     }
 
@@ -131,12 +132,12 @@ TEST_F(HistoryPersistenceTest, SaveAndRestoreMultipleSensors)
     ASSERT_TRUE(waitForHistoryKey(*h2, "cpu_temp"));
 
     std::lock_guard<std::mutex> lk(h2->historyMutex);
-    EXPECT_EQ(h2->sensorHistory.count("cpu_temp"),   1u);
+    EXPECT_EQ(h2->sensorHistory.count("cpu_temp"), 1u);
     EXPECT_EQ(h2->sensorHistory.count("inlet_temp"), 1u);
-    EXPECT_EQ(h2->sensorHistory.count("fan_speed"),  1u);
-    EXPECT_EQ(h2->sensorHistory.at("cpu_temp").size(),   2u);
+    EXPECT_EQ(h2->sensorHistory.count("fan_speed"), 1u);
+    EXPECT_EQ(h2->sensorHistory.at("cpu_temp").size(), 2u);
     EXPECT_EQ(h2->sensorHistory.at("inlet_temp").size(), 2u);
-    EXPECT_EQ(h2->sensorHistory.at("fan_speed").size(),  2u);
+    EXPECT_EQ(h2->sensorHistory.at("fan_speed").size(), 2u);
 }
 
 TEST_F(HistoryPersistenceTest, SaveHistoryOnShutdownPersistsCorrectValues)

@@ -7,12 +7,12 @@
 
 #include "mock_sensor_reader.hpp"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <chrono>
 #include <filesystem>
 #include <string>
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace testing;
 using namespace phosphor::SensorReader::test;
@@ -118,8 +118,8 @@ TEST_F(HistoryReadTest, ReadPreservesTimestampValuePairs)
 {
     const uint64_t ts1 = 1700000000ULL;
     const uint64_t ts2 = 1700000060ULL;
-    const double   v1  = 72.3;
-    const double   v2  = 73.1;
+    const double v1 = 72.3;
+    const double v2 = 73.1;
 
     injectReading("inlet_temp", ts1, v1);
     injectReading("inlet_temp", ts2, v2);

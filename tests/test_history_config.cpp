@@ -14,12 +14,13 @@
 
 #include "mock_sensor_reader.hpp"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 #include <filesystem>
 #include <fstream>
-#include <nlohmann/json.hpp>
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using namespace testing;
 using namespace phosphor::SensorReader::test;
